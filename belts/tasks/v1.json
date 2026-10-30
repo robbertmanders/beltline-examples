@@ -1,0 +1,345 @@
+{
+  "id": "tasks",
+  "name": "Tasks",
+  "version": 1,
+  "triggers": [
+    {
+      "id": "1",
+      "trigger": {
+        "kind": "manual"
+      },
+      "repos": []
+    }
+  ],
+  "base": "",
+  "policies": {
+    "retriageOnEdit": true,
+    "stopOnClose": true,
+    "commentOnHold": false,
+    "waitForBlockers": true
+  },
+  "stages": [
+    {
+      "id": "spec",
+      "type": "agent",
+      "name": "Spec",
+      "agent": {
+        "id": "spec",
+        "version": 2
+      },
+      "key": "spec",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "spec.md",
+      "slots": 2,
+      "brief": "You are the spec agent. Your only job is to write the spec for an issue that has already been triaged as ready. Do not change the repository: no edits, commits, or pushes. Do not triage the issue again or question whether it should be built; that was decided.\n\nThe issue is below. Read, in this order:\n- its triage at {issue}: the outcome, the reason, and the notes for the spec;\n- the repository's own guidance, such as AGENTS.md or CONTRIBUTING.md;\n- the code the issue touches, so the Approach names real files.\n\nWrite only {spec}, following this template. Size it to the triage: `ready to implement` gets a Goal, a few Behaviour rules, and Testing; `ready to spec` gets every section. Behaviour rules describe what the user sees and can rely on, not how the code does it; each one must be testable and appear in the Testing section. If a rule depends on something only a person can answer, write the rule as best you can and put the question under `## Open questions`; do not guess silently. When there are questions, make `## Open questions` the first `##` section and number them `1.`, `2.`, …, without an outcome prefix. Omit the section when there are no questions.\n\n# <title>\n\n## Open questions\n1. Questions only a person can answer.\n\n## Goal\nWhat should be true when this is done.\n\n## Behaviour\n1. One testable rule per number, from the user's point of view.\n\n## Testing\n1 → the test or command that shows rule 1 holds.\n\n## Approach\n(ready to spec) The files and changes, with paths and line numbers at a commit.\n\n## Non-goals\n(ready to spec) What this deliberately leaves out.\n\nLeave out empty sections.",
+      "outcomes": [
+        {
+          "id": "2DB7CB10-6D2F-4E10-863E-55517BFEB1ED",
+          "name": "complete",
+          "when": "Every rule is testable and nothing is left to ask.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "F26A1D3F-A96E-426E-B953-55A40389AA70",
+          "name": "open questions",
+          "when": "Some rules depend on answers only a person can give.",
+          "tone": "you",
+          "then": {
+            "do": "hold",
+            "comment": true
+          }
+        },
+        {
+          "id": "51A07B4B-8B8B-4A59-BDD8-A9148D3C43E7",
+          "name": "incomplete",
+          "when": "A required section is missing.",
+          "tone": "problem",
+          "then": {
+            "do": "retry",
+            "max": 1
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "approve",
+      "type": "approve",
+      "name": "Approve",
+      "model": "",
+      "workspace": "readOnly",
+      "writes": "decision",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "80BEE938-12F7-47A4-9850-6675234C1E6C",
+          "name": "approved",
+          "when": "Approve",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "AF700F73-E19E-4FDB-8E0B-B7A613E351CE",
+          "name": "sent back",
+          "when": "Send back with a note",
+          "tone": "problem",
+          "then": {
+            "do": "goto",
+            "to": "spec",
+            "withOutput": true
+          }
+        },
+        {
+          "id": "3F90BC65-38C1-4909-8DA7-D4888E8B2A25",
+          "name": "parked",
+          "when": "Park it",
+          "tone": "neutral",
+          "then": {
+            "do": "park"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "build",
+      "type": "agent",
+      "name": "Build",
+      "agent": {
+        "id": "build",
+        "version": 1
+      },
+      "key": "evidence",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "worktree",
+      "writes": "evidence.md",
+      "slots": 1,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "7348222A-FCBA-41ED-8F0B-8714AA27F766",
+          "name": "done",
+          "when": "The change is committed and the tests pass.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "3AE8435B-E7CE-47C0-AF63-C7B546266A28",
+          "name": "blocked",
+          "when": "It can't be finished without a decision from a person.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "verify",
+      "type": "agent",
+      "name": "Verify",
+      "agent": {
+        "id": "verify",
+        "version": 1
+      },
+      "key": "verdict",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "worktreeReadOnly",
+      "writes": "verdict.md",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "52C977BF-4EE2-4E81-87D3-9064FD51B6EE",
+          "name": "pass",
+          "when": "Every behaviour rule is met.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "3D03753A-3F0A-4F29-A04C-AF71FABB5CA0",
+          "name": "code mismatch",
+          "when": "The change doesn't do what a rule says.",
+          "tone": "problem",
+          "then": {
+            "do": "goto",
+            "to": "build",
+            "withOutput": true,
+            "max": 1
+          }
+        },
+        {
+          "id": "DDD0EDA6-647A-43CD-A9B1-7CC5B2C71C40",
+          "name": "spec mismatch",
+          "when": "The change is right, but the spec is wrong or out of date.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "ship",
+      "type": "agent",
+      "name": "Ship",
+      "agent": {
+        "id": "ship",
+        "version": 2
+      },
+      "key": "pull-request",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "worktree",
+      "writes": "pull-request.md",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "C365294C-7A0D-4E0C-B591-2C813570C214",
+          "name": "opened",
+          "when": "Every repository the branch changed has its pull request open.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "76FC2819-D174-43F5-ADE2-9F1B917CC277",
+          "name": "nothing to ship",
+          "when": "The branch has no commits to merge in any repository.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "BCC53811-6AC6-4700-AD49-5E07B06508AD",
+          "name": "failed",
+          "when": "A branch couldn't be pushed or a pull request couldn't be opened.",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "watch",
+      "type": "watch",
+      "name": "Merge",
+      "model": "",
+      "workspace": "readOnly",
+      "writes": "pull request",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "98D0A049-75C3-4E8F-BB79-1181812123FB",
+          "name": "merged",
+          "when": "merged",
+          "tone": "good",
+          "then": {
+            "do": "ship"
+          }
+        },
+        {
+          "id": "C14485B9-617A-47DA-9863-29E28E02DC0A",
+          "name": "closed",
+          "when": "closed",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "3BC08394-0476-4DB9-A747-0BA2624A6447",
+          "name": "checks failing",
+          "when": "checksFailed",
+          "tone": "problem",
+          "then": {
+            "do": "goto",
+            "to": "ship",
+            "max": 2
+          }
+        },
+        {
+          "id": "19440204-6B07-48BD-B2AD-9ECD8056CC58",
+          "name": "has conflicts",
+          "when": "conflicted",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "AEF8FA26-BA96-436B-9543-E8C57979FCF6",
+          "name": "is behind",
+          "when": "behind",
+          "tone": "problem",
+          "then": {
+            "do": "goto",
+            "to": "ship",
+            "max": 2
+          }
+        },
+        {
+          "id": "B77D0CE7-667C-4D45-96D3-A42730A45A80",
+          "name": "is approved",
+          "when": "approved",
+          "tone": "good",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "E64377FA-3239-401E-83B9-655A8440ABDB",
+          "name": "a reviewer commented",
+          "when": "commented",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "C6DD5919-AE1F-4E68-8347-2825A408654F",
+          "name": "changes requested",
+          "when": "changesRequested",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "2108F0AE-EA35-40C2-975C-362CD4ED040C",
+          "name": "new changes",
+          "when": "newChanges",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold"
+    }
+  ],
+  "forks": [],
+  "afk": "global"
+}

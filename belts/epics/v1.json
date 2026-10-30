@@ -1,0 +1,518 @@
+{
+  "id": "epics",
+  "name": "Epics to tickets",
+  "version": 1,
+  "triggers": [
+    {
+      "id": "1",
+      "trigger": {
+        "kind": "jira",
+        "jql": "issuetype = Epic AND labels = beltline",
+        "poll": 60
+      },
+      "repos": []
+    }
+  ],
+  "base": "",
+  "policies": {
+    "retriageOnEdit": false,
+    "stopOnClose": true,
+    "commentOnHold": false,
+    "waitForBlockers": true
+  },
+  "stages": [
+    {
+      "id": "plan-epic",
+      "type": "agent",
+      "name": "Plan the epic",
+      "agent": {
+        "id": "plan-epic",
+        "version": 1
+      },
+      "key": "plan",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "plan.md",
+      "slots": 1,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "88A357BB-9865-44CD-B401-0712394E0152",
+          "name": "ready",
+          "when": "The design is written and the first wave of tickets is ready to file.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "40455682-BCEA-4DD0-A94D-A022DB40A3CF",
+          "name": "open questions",
+          "when": "The epic can't be planned without answers only a person can give.",
+          "tone": "you",
+          "then": {
+            "do": "hold",
+            "comment": true
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "approve-plan",
+      "type": "approve",
+      "name": "Approve the plan",
+      "model": "",
+      "workspace": "readOnly",
+      "writes": "decision",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "36402DFB-D321-41DF-BDCB-3E05CC8E538C",
+          "name": "approved",
+          "when": "Approve",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "FAEC99DC-09D2-4B10-9D2B-DB62FAADFE6B",
+          "name": "sent back",
+          "when": "Send back with a note",
+          "tone": "problem",
+          "then": {
+            "do": "goto",
+            "to": "plan-epic",
+            "withOutput": true
+          }
+        },
+        {
+          "id": "D123CF9E-DD94-49B0-BE24-A7D09CA16A8E",
+          "name": "parked",
+          "when": "Park it",
+          "tone": "neutral",
+          "then": {
+            "do": "park"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "open-branches",
+      "type": "agent",
+      "name": "Open the feature branch",
+      "agent": {
+        "id": "open-branches",
+        "version": 1
+      },
+      "key": "branches",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "worktree",
+      "writes": "branches.md",
+      "slots": 1,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "03F6BC83-AD4A-486C-82B3-28D9C61B59D4",
+          "name": "opened",
+          "when": "The feature branch exists on the remote of every repository.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "1A253C29-E3D2-4342-87E3-139E6742A6DB",
+          "name": "blocked",
+          "when": "The branch couldn't be pushed somewhere and a person should look.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "file-wave",
+      "type": "agent",
+      "name": "File the wave",
+      "agent": {
+        "id": "file-wave",
+        "version": 1
+      },
+      "key": "wave",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "wave.md",
+      "slots": 1,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "185F9886-7B37-45D0-8169-68C6E952E283",
+          "name": "filed",
+          "when": "Every ticket of the approved wave is filed under the epic.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "D500FF50-00FD-4DE1-A723-5D4F04BB2CE9",
+          "name": "blocked",
+          "when": "Some tickets couldn't be filed and a person should look.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "watch",
+      "type": "watch",
+      "name": "Watch the ticket",
+      "model": "",
+      "workspace": "readOnly",
+      "writes": "pull request",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "3F4A4605-4A58-4CCE-91EE-4910900509DC",
+          "name": "child tickets changed",
+          "when": "childrenChanged",
+          "tone": "neutral",
+          "then": {
+            "do": "next",
+            "withOutput": true
+          }
+        },
+        {
+          "id": "F6219E38-FA61-4EC5-8191-8024653AE117",
+          "name": "commented",
+          "when": "newComment",
+          "tone": "neutral",
+          "then": {
+            "do": "next",
+            "withOutput": true
+          }
+        },
+        {
+          "id": "C077C5AB-F5F6-494F-B56A-BECCC73BEDA2",
+          "name": "closed",
+          "when": "ticketClosed",
+          "tone": "problem",
+          "then": {
+            "do": "drop"
+          }
+        }
+      ],
+      "fallback": "hold",
+      "watch": "ticket"
+    },
+    {
+      "id": "assess-epic",
+      "type": "agent",
+      "name": "Assess the epic",
+      "agent": {
+        "id": "assess-epic",
+        "version": 1
+      },
+      "key": "assess",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "assess.md",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "A7D54BBD-8BD9-497F-AFE3-B181360E22D3",
+          "name": "wait",
+          "when": "Nothing needs doing yet; the wave is still being built.",
+          "tone": "neutral",
+          "then": {
+            "do": "goto",
+            "to": "watch"
+          }
+        },
+        {
+          "id": "BE7FFAA3-EF76-4D9C-90B2-E03F4ABAF153",
+          "name": "wave done",
+          "when": "Every ticket of the current wave is done, or the plan has to change now.",
+          "tone": "good",
+          "then": {
+            "do": "route",
+            "route": "next-wave",
+            "withOutput": true
+          }
+        },
+        {
+          "id": "BCC111A8-4E9F-41F9-8FBB-72C7AE768381",
+          "name": "epic done",
+          "when": "Every ticket is done and the epic asked for nothing more.",
+          "tone": "good",
+          "then": {
+            "do": "route",
+            "route": "land"
+          }
+        },
+        {
+          "id": "C186331E-E8D7-4C7E-BE37-9FE14202D7D0",
+          "name": "stuck",
+          "when": "A comment asks something only a person can decide.",
+          "tone": "you",
+          "then": {
+            "do": "hold",
+            "comment": true
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "replan-epic",
+      "type": "agent",
+      "name": "Replan the epic",
+      "agent": {
+        "id": "replan-epic",
+        "version": 1
+      },
+      "key": "replan",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "replan.md",
+      "slots": 1,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "2D377C58-42C3-4F10-938F-7B00151402D3",
+          "name": "next wave",
+          "when": "The next wave of tickets is planned and ready to approve.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "6EC17985-CA62-4F24-A5F1-E34C18EFEF6F",
+          "name": "nothing left",
+          "when": "Everything the epic asked for has landed on the feature branch.",
+          "tone": "good",
+          "then": {
+            "do": "goto",
+            "to": "assess-epic",
+            "withOutput": true
+          }
+        },
+        {
+          "id": "65157A56-A8F7-452A-9D47-10586EF7681E",
+          "name": "open questions",
+          "when": "The next wave can't be planned without answers only a person can give.",
+          "tone": "you",
+          "then": {
+            "do": "hold",
+            "comment": true
+          }
+        }
+      ],
+      "fallback": "hold",
+      "route": "next-wave"
+    },
+    {
+      "id": "approve-wave",
+      "type": "approve",
+      "name": "Approve the wave",
+      "model": "",
+      "workspace": "readOnly",
+      "writes": "decision",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "48FDB60B-B9CA-4EDE-834A-917B9849539C",
+          "name": "approved",
+          "when": "Approve",
+          "tone": "good",
+          "then": {
+            "do": "goto",
+            "to": "file-wave"
+          }
+        },
+        {
+          "id": "24121E2E-31B8-4AC0-9615-A4C21315DB87",
+          "name": "sent back",
+          "when": "Send back with a note",
+          "tone": "problem",
+          "then": {
+            "do": "goto",
+            "to": "replan-epic",
+            "withOutput": true
+          }
+        },
+        {
+          "id": "63463170-1E31-46B6-B56C-418EFDB7176B",
+          "name": "parked",
+          "when": "Park it",
+          "tone": "neutral",
+          "then": {
+            "do": "park"
+          }
+        }
+      ],
+      "fallback": "hold",
+      "route": "next-wave"
+    },
+    {
+      "id": "land-epic",
+      "type": "agent",
+      "name": "Land the epic",
+      "agent": {
+        "id": "land-epic",
+        "version": 1
+      },
+      "key": "land",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "land.md",
+      "slots": 1,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "D525799A-CD3C-45A7-BC0B-ACA7C50017CF",
+          "name": "opened",
+          "when": "Each repository's feature branch has a pull request into its base.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "48F651EB-061E-4E3E-9F8F-73122B660026",
+          "name": "blocked",
+          "when": "A pull request couldn't be opened and a person should look.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold",
+      "route": "land"
+    },
+    {
+      "id": "merge",
+      "type": "watch",
+      "name": "Merge",
+      "model": "",
+      "workspace": "readOnly",
+      "writes": "pull request",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "689C0F55-635B-4678-BADD-E3D8732D8EF4",
+          "name": "merged",
+          "when": "merged",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "D3E85E1C-1360-4696-A744-0585CA07CC6C",
+          "name": "closed",
+          "when": "closed",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "CAF7A32A-B6DC-46B4-A2DB-8481ABCF09DB",
+          "name": "checks failing",
+          "when": "checksFailed",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "9D436C24-7AF3-43D8-B676-7B38D8B38303",
+          "name": "has conflicts",
+          "when": "conflicted",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold",
+      "route": "land"
+    },
+    {
+      "id": "wrap-up",
+      "type": "agent",
+      "name": "Wrap up",
+      "agent": {
+        "id": "wrap-up",
+        "version": 2
+      },
+      "key": "wrap-up",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "wrap-up.md",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "BEA9CECC-4A18-49A8-B812-D828E747301B",
+          "name": "done",
+          "when": "What the work was about is closed or moved on.",
+          "tone": "good",
+          "then": {
+            "do": "ship"
+          }
+        },
+        {
+          "id": "060A9833-6004-45E8-B5AC-6ED0064A174B",
+          "name": "blocked",
+          "when": "It can't be closed or moved without a person.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold",
+      "route": "land"
+    }
+  ],
+  "forks": [
+    {
+      "id": "after-assess",
+      "routes": [
+        {
+          "id": "next-wave",
+          "name": "Next wave"
+        },
+        {
+          "id": "land",
+          "name": "Land"
+        }
+      ]
+    }
+  ],
+  "afk": "global"
+}

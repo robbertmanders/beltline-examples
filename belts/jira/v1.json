@@ -1,0 +1,548 @@
+{
+  "id": "jira",
+  "name": "Jira tickets to pull requests",
+  "version": 1,
+  "triggers": [
+    {
+      "id": "1",
+      "trigger": {
+        "kind": "jira",
+        "jql": "project = KEY AND labels = agent",
+        "poll": 60
+      },
+      "repos": []
+    }
+  ],
+  "base": "",
+  "policies": {
+    "retriageOnEdit": true,
+    "stopOnClose": true,
+    "commentOnHold": false,
+    "waitForBlockers": true
+  },
+  "stages": [
+    {
+      "id": "triage",
+      "type": "agent",
+      "name": "Triage",
+      "agent": {
+        "id": "triage",
+        "version": 2
+      },
+      "key": "triage",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "triage.md",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "DE05F167-AE8A-4B0C-8488-411AD605B4F9",
+          "name": "ready to implement",
+          "when": "The behaviour is clear and the change is small enough for one pass.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "BE87FE54-1582-4767-95B5-E94C11AD2492",
+          "name": "ready to spec",
+          "when": "The goal is clear, but there are several approaches or the change is large.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "2C4F4EC5-71D2-41BB-A6F1-8BCD58430B30",
+          "name": "needs info",
+          "when": "The problem or the expected behaviour is too unclear to specify.",
+          "tone": "you",
+          "then": {
+            "do": "hold",
+            "comment": true
+          }
+        },
+        {
+          "id": "8D4C60A8-F3EB-4057-935A-8B42B1791090",
+          "name": "wait to implement",
+          "when": "It duplicates other work, doesn't fit the project, or is premature.",
+          "tone": "neutral",
+          "then": {
+            "do": "park"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "spec",
+      "type": "agent",
+      "name": "Spec",
+      "agent": {
+        "id": "spec",
+        "version": 2
+      },
+      "key": "spec",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "spec.md",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "242F06AB-6563-4FCE-B1B1-F3329C0CA846",
+          "name": "complete",
+          "when": "Every rule is testable and nothing is left to ask.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "D37D86A2-1BFB-4107-B843-4E4117E1EF67",
+          "name": "open questions",
+          "when": "Some rules depend on answers only a person can give.",
+          "tone": "you",
+          "then": {
+            "do": "hold",
+            "comment": true
+          }
+        },
+        {
+          "id": "91F0C5C8-D459-42F3-8B55-5DAB0E9DD33F",
+          "name": "incomplete",
+          "when": "A required section is missing.",
+          "tone": "problem",
+          "then": {
+            "do": "retry",
+            "max": 1
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "approve",
+      "type": "approve",
+      "name": "Approve",
+      "model": "",
+      "workspace": "readOnly",
+      "writes": "decision",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "DF95562F-C38A-4F93-9B81-809E558A64D0",
+          "name": "approved",
+          "when": "Approve",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "8E5F2B3D-8AC1-4C81-BBB5-730BF85352DF",
+          "name": "sent back",
+          "when": "Send back with a note",
+          "tone": "problem",
+          "then": {
+            "do": "goto",
+            "to": "spec",
+            "withOutput": true
+          }
+        },
+        {
+          "id": "78CD4133-4002-4928-8A48-63D58D2E04D5",
+          "name": "parked",
+          "when": "Park it",
+          "tone": "neutral",
+          "then": {
+            "do": "park"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "build",
+      "type": "agent",
+      "name": "Build",
+      "agent": {
+        "id": "build",
+        "version": 1
+      },
+      "key": "evidence",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "worktree",
+      "writes": "evidence.md",
+      "slots": 1,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "F3354CC2-0584-4DCD-8425-63F7E28E38FB",
+          "name": "done",
+          "when": "The change is committed and the tests pass.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "AD4E54AC-8CFC-4DCB-B078-662E39768091",
+          "name": "blocked",
+          "when": "It can't be finished without a decision from a person.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "verify",
+      "type": "agent",
+      "name": "Verify",
+      "agent": {
+        "id": "verify",
+        "version": 1
+      },
+      "key": "verdict",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "worktreeReadOnly",
+      "writes": "verdict.md",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "074B699F-F83E-4DE3-82C3-7C3F1497E17C",
+          "name": "pass",
+          "when": "Every behaviour rule is met.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "7D5AD1A2-B938-4244-96A9-230FDA62B44B",
+          "name": "code mismatch",
+          "when": "The change doesn't do what a rule says.",
+          "tone": "problem",
+          "then": {
+            "do": "goto",
+            "to": "build",
+            "withOutput": true,
+            "max": 1
+          }
+        },
+        {
+          "id": "8BD33A15-5C89-4FBA-9A6C-E8A514D3400F",
+          "name": "spec mismatch",
+          "when": "The change is right, but the spec is wrong or out of date.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "ship",
+      "type": "agent",
+      "name": "Ship",
+      "agent": {
+        "id": "ship",
+        "version": 2
+      },
+      "key": "pull-request",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "worktree",
+      "writes": "pull-request.md",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "627ACA71-0331-448C-8668-BE854A239D37",
+          "name": "opened",
+          "when": "Every repository the branch changed has its pull request open.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "813E0B53-ED01-4EE8-ACD5-F6D09E756FFF",
+          "name": "nothing to ship",
+          "when": "The branch has no commits to merge in any repository.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "8C5600C3-2D59-44E8-9BF5-603A2C767D97",
+          "name": "failed",
+          "when": "A branch couldn't be pushed or a pull request couldn't be opened.",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "watch",
+      "type": "watch",
+      "name": "Merge",
+      "model": "",
+      "workspace": "readOnly",
+      "writes": "pull request",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "DEF54AD6-5798-4413-B51F-A63B63E6BD4C",
+          "name": "merged",
+          "when": "merged",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "B8F59D65-166D-4805-8AAF-43FFC2C5858A",
+          "name": "closed",
+          "when": "closed",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "9AAFC3B9-AA3B-4C08-86A4-9D30F9CCE9E0",
+          "name": "checks failing",
+          "when": "checksFailed",
+          "tone": "problem",
+          "then": {
+            "do": "route",
+            "route": "checks",
+            "max": 2
+          }
+        },
+        {
+          "id": "596F6692-150F-4C07-9809-697BEB96140E",
+          "name": "has conflicts",
+          "when": "conflicted",
+          "tone": "problem",
+          "then": {
+            "do": "route",
+            "route": "conflicts",
+            "max": 2
+          }
+        },
+        {
+          "id": "E04CE6B7-C0DC-422D-98C1-017F2EBF102A",
+          "name": "is behind",
+          "when": "behind",
+          "tone": "problem",
+          "then": {
+            "do": "route",
+            "route": "conflicts",
+            "max": 2
+          }
+        },
+        {
+          "id": "6A86B912-D639-4E06-9421-A677882C6EAC",
+          "name": "is approved",
+          "when": "approved",
+          "tone": "good",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "F48D5313-FCB1-4D32-83C0-A1AD6F38F912",
+          "name": "a reviewer commented",
+          "when": "commented",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "831D2C81-C2FF-415A-B849-15DF8FB733A3",
+          "name": "changes requested",
+          "when": "changesRequested",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "2FBF414B-8744-4B5B-821E-E5F362279456",
+          "name": "new changes",
+          "when": "newChanges",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "wrap-up",
+      "type": "agent",
+      "name": "Wrap up",
+      "agent": {
+        "id": "wrap-up",
+        "version": 2
+      },
+      "key": "wrap-up",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "wrap-up.md",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "B7954281-0589-4CDC-9F09-8D1BB0F39E31",
+          "name": "done",
+          "when": "What the work was about is closed or moved on.",
+          "tone": "good",
+          "then": {
+            "do": "ship"
+          }
+        },
+        {
+          "id": "04AF6F00-7C02-466F-A79B-7746D32F6A47",
+          "name": "blocked",
+          "when": "It can't be closed or moved without a person.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold",
+      "route": "merged"
+    },
+    {
+      "id": "resolve-conflicts",
+      "type": "agent",
+      "name": "Resolve conflicts",
+      "agent": {
+        "id": "resolve-conflicts",
+        "version": 1
+      },
+      "key": "conflicts",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "worktree",
+      "writes": "conflicts.md",
+      "slots": 1,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "D25E643B-C285-494B-B158-7BC67CB3968F",
+          "name": "resolved",
+          "when": "The base branch is merged in, the tests pass, and the branch is pushed.",
+          "tone": "good",
+          "then": {
+            "do": "goto",
+            "to": "watch"
+          }
+        },
+        {
+          "id": "4BD29A84-E21E-43AC-801F-87B7BCB072C1",
+          "name": "blocked",
+          "when": "A conflict can't be resolved without a decision from a person.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold",
+      "route": "conflicts"
+    },
+    {
+      "id": "fix-checks",
+      "type": "agent",
+      "name": "Fix checks",
+      "agent": {
+        "id": "fix-checks",
+        "version": 1
+      },
+      "key": "checks",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "worktree",
+      "writes": "checks.md",
+      "slots": 1,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "08413F04-48A3-4AD2-9EF8-410965318334",
+          "name": "fixed",
+          "when": "The failing checks pass locally and the fix is pushed.",
+          "tone": "good",
+          "then": {
+            "do": "goto",
+            "to": "watch"
+          }
+        },
+        {
+          "id": "7E0D104F-A9D3-4027-9219-65DBBD185FF3",
+          "name": "not ours",
+          "when": "The failures come from outside the change, such as a flaky test or broken CI, and a person should look.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        },
+        {
+          "id": "69E6F137-A522-4EE0-80E7-9FF61CF19FC7",
+          "name": "blocked",
+          "when": "It can't be fixed without a decision from a person.",
+          "tone": "you",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold",
+      "route": "checks"
+    }
+  ],
+  "forks": [
+    {
+      "id": "after-merge",
+      "routes": [
+        {
+          "id": "merged",
+          "name": "Merged"
+        },
+        {
+          "id": "conflicts",
+          "name": "Conflicts"
+        },
+        {
+          "id": "checks",
+          "name": "Failing checks"
+        }
+      ]
+    }
+  ],
+  "afk": "global"
+}

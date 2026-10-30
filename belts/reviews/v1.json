@@ -1,0 +1,101 @@
+{
+  "id": "reviews",
+  "name": "Pull request reviews",
+  "version": 1,
+  "triggers": [
+    {
+      "id": "1",
+      "trigger": {
+        "kind": "reviews",
+        "reviewers": "me",
+        "poll": 60
+      },
+      "repos": []
+    }
+  ],
+  "base": "",
+  "policies": {
+    "retriageOnEdit": true,
+    "stopOnClose": true,
+    "commentOnHold": false,
+    "waitForBlockers": true
+  },
+  "stages": [
+    {
+      "id": "review",
+      "type": "agent",
+      "name": "Review",
+      "agent": {
+        "id": "review",
+        "version": 1
+      },
+      "key": "review",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "review.md",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "783DC33C-E418-4161-A4BF-42542315D2AC",
+          "name": "no blocking findings",
+          "when": "Nothing must change before merging.",
+          "tone": "good",
+          "then": {
+            "do": "next"
+          }
+        },
+        {
+          "id": "1B8ABDEF-CFD9-4EB1-9B92-F85C36444A1E",
+          "name": "blocking findings",
+          "when": "Something must change before merging.",
+          "tone": "problem",
+          "then": {
+            "do": "next"
+          }
+        }
+      ],
+      "fallback": "hold"
+    },
+    {
+      "id": "post-review",
+      "type": "agent",
+      "name": "Post review",
+      "agent": {
+        "id": "post-review",
+        "version": 2
+      },
+      "key": "posted-review",
+      "runner": "pi",
+      "model": "openrouter/stealth/space-bunny-alpha",
+      "workspace": "readOnly",
+      "writes": "posted-review.md",
+      "slots": 2,
+      "brief": "",
+      "outcomes": [
+        {
+          "id": "B585426C-0718-41DC-8846-F11119238D14",
+          "name": "submitted",
+          "when": "The review is submitted on the pull request.",
+          "tone": "good",
+          "then": {
+            "do": "done"
+          }
+        },
+        {
+          "id": "DBF4D832-78B4-49E2-AB01-A2DACB6AD7E8",
+          "name": "failed",
+          "when": "The review couldn't be submitted.",
+          "tone": "problem",
+          "then": {
+            "do": "hold"
+          }
+        }
+      ],
+      "fallback": "hold"
+    }
+  ],
+  "forks": [],
+  "afk": "global"
+}
